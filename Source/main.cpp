@@ -12,7 +12,6 @@ using namespace UltraEngine;
 const static WString componentspath = "Components";
 const static WString outfile = "RegisterComponents.h";
 static std::vector<WString> components;
-static bool generate = false;
 
 const String GenerationTimestamp()
 {
@@ -45,6 +44,7 @@ void LoadFiles(const WString& path, std::vector<WString>& files)
 					{
 						Print("Writing file \"" + FixPath(jsonpath) + "\"");
 
+#ifndef _ULTRA_APPKIT
 						auto j3 = table();
 						j3["component"] = {};
 						j3["component"]["properties"] = {};
@@ -53,6 +53,16 @@ void LoadFiles(const WString& path, std::vector<WString>& files)
 						{
 							Print("Error: Failed to write file \"" + FixPath(jsonpath) + "\"");
 						}
+#else
+						nlohmann::json j3;
+						j3["component"] = {};
+						j3["component"]["properties"] = {};
+						j3["component"]["properties"][0]; // Write nothing here.
+						if (!SaveJSON(j3, jsonpath))
+						{
+							Print("Error: Failed to write file \"" + FixPath(jsonpath) + "\"");
+						}
+#endif
 					}
 				}
 				break;
@@ -111,6 +121,7 @@ static int WriteHeader()
 
 int main(int argc, const char* argv[])
 {
+	static bool generate = false;
 	auto cl = ParseCommandLine(argc, argv);
 	Print("Ultra Engine Pre-Processor - (" + WString(__DATE__) + ")");
 
@@ -124,12 +135,22 @@ int main(int argc, const char* argv[])
 		// If the application is in a diffrent folder (eg Tools), allow the operator to set the target of the project and try again.
 		if (cl["path"].is_string())
 		{
+#ifndef _ULTRA_APPKIT
 			String workpath = cl["path"];
 			if (FileType(FixPath(workpath + "/Source")) == 2)
 			{
 				ChangeDir(workpath + "/Source");
 				LoadFiles(componentspath, components);
 			}
+#else
+			const std::string workpath = cl["path"].get<std::string>();
+			WString path = FixPath(WString(workpath + "/Source"));
+			if (FileType(path) == 2)
+			{
+				ChangeDir(workpath + "/Source");
+				LoadFiles(componentspath, components);
+			}
+#endif
 		}
 
 		Print("Error: Failed to locate Source Directory!");
@@ -139,8 +160,12 @@ int main(int argc, const char* argv[])
 	// Check to see if the operator wants to force this.
 	if (cl["forcegen"].is_boolean())
 	{
+#ifndef _ULTRA_APPKIT
 		const bool b = cl["forcegen"];
 		generate = b;
+#else
+		generate = cl["forcegen"].get<bool>();
+#endif
 
 		Print("Alert: Force Generating!");
 	}
@@ -179,11 +204,11 @@ int main(int argc, const char* argv[])
 	if (generate)
 	{
 		rtn = WriteHeader();
-		if (rtn == 0) 
+		if (rtn == 0)
 			Print("Pre-processor completed successfully - Time Elapsed: " + String(Millisecs() - tm) + " milliseconds.");
 		else
 			Print("Pre-processor FAILED - Time Elapsed: " + String(Millisecs() - tm) + " milliseconds.");
 	}
 
-    return rtn;
+	return rtn;
 }
