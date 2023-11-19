@@ -10,7 +10,7 @@
 using namespace UltraEngine;
 
 const static WString componentspath = "Components";
-const static WString outfile = "RegisterComponents.h";
+const static WString outfile = "ComponentSystem.h";
 static std::vector<WString> components;
 
 const String GenerationTimestamp()
